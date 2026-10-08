@@ -8,5 +8,5 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "src"),
     },
   },
-  test: { include: ["tests/**/*.test.ts"] },
+  test: { include: ["tests/**/*.test.{ts,tsx}"] },
 });

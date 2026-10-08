@@ -1,5 +1,6 @@
 // Outcome data collection (v1). Append-only: observations, cohorts and snapshots are only ever inserted.
 import { fetchMetrics, fetchPairsByAddress, type SourceStat } from "./dex.ts";
+import type { RugCheckResult } from "./rugcheck.ts";
 import type { Preset, TokenScan } from "./types.ts";
 
 // deno-lint-ignore no-explicit-any
@@ -50,6 +51,8 @@ export interface ObserveItem {
   scan: TokenScan;
   sources: ObsSource[];
   shown: boolean;
+  /** Only set when the user asked for RugCheck on this lookup; otherwise null (not requested). */
+  rugcheck?: RugCheckResult | null;
 }
 
 /** Record every item as an observation, and open a cohort the first time a token appears under this preset version. */
@@ -74,7 +77,7 @@ export async function observeScans(
     }
     if (!byMint.size) return { written: 0 };
   }
-  const rows = [...byMint.values()].map(({ scan, sources, shown }) => ({
+  const rows = [...byMint.values()].map(({ scan, sources, shown, rugcheck }) => ({
     user_id: userId,
     observed_at: scan.scannedAt,
     mint: scan.metrics.mint,
@@ -96,6 +99,7 @@ export async function observeScans(
     clustering: scan.chain.clustering,
     rpc_budget: { calls: scan.chain.rpcCalls, budgetHit: scan.chain.budgetHit, skipped: scan.chain.skipped },
     schema_version: 2,
+    rugcheck: rugcheck ?? null,
   }));
   const { data, error } = await db.from("observations").insert(rows).select("id,mint,observed_at");
   if (error) throw new Error(`Saving observations failed: ${error.message}`);

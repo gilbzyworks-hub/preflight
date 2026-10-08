@@ -13,7 +13,7 @@ interface Obs {
   id: number; metrics: { symbol: string | null; liquidityUsd: number | null; priceUsd: number | null; pools?: unknown[]; mainPoolShare?: number | null };
   counts: { pass: number; warn: number; fail: number; unknown: number; notRun?: number }; sources: string[]; paid_promotion: boolean; shown: boolean;
   schema_version: number; checks: StoredCheck[]; holders: { rawTop10Pct: number; adjustedTop10Pct: number } | null; extensions: { name: string }[] | null;
-  creator: { status: string; address: string | null } | null; clustering: { status: string; pctFirst3Slots: number | null } | null; rpc_budget: { calls?: number; budgetHit?: boolean } | null;
+  creator: { status: string; address: string | null } | null; clustering: { status: string; pctFirst3Slots: number | null } | null; rugcheck: { status: "items" | "none" | "unavailable"; reason?: string; risks?: unknown[]; fetchedAt: string } | null; rpc_budget: { calls?: number; budgetHit?: boolean } | null;
 }
 
 /** Fields added with schema version 2. Rows written earlier never had them, so they are not "unknown": they were not collected. */
@@ -37,6 +37,13 @@ function StoredChecks({ o }: { o: Obs }) {
           </li>
         ))}
       </ul>
+      {o.rugcheck && (
+        <p className={`label mt-2 ${o.rugcheck.status === "unavailable" ? "text-warn" : ""}`}>
+          {o.rugcheck.status === "unavailable" && `! RugCheck data unavailable (${o.rugcheck.reason}) as of ${stamp(o.rugcheck.fetchedAt)}.`}
+          {o.rugcheck.status === "none" && `RugCheck reported no risk items (${stamp(o.rugcheck.fetchedAt)}). That is not an endorsement.`}
+          {o.rugcheck.status === "items" && `RugCheck reported ${o.rugcheck.risks?.length ?? 0} item(s) (${stamp(o.rugcheck.fetchedAt)}).`}
+        </p>
+      )}
       {o.schema_version >= 2 && o.rpc_budget && <p className="label mt-2">{o.rpc_budget.calls ?? 0} RPC requests used in that scan{o.rpc_budget.budgetHit ? "; the request budget was reached, so some checks show NOT RUN" : ""}.</p>}
     </details>
   );
@@ -107,7 +114,7 @@ export default function Outcomes() {
     const list = (cs ?? []) as Cohort[];
     const ids = list.map((c) => c.id);
     const [o, s, n, a, v, cnt, first, last] = await Promise.all([
-      db.from("observations").select("id,metrics,counts,sources,paid_promotion,shown,schema_version,checks,holders,extensions,creator,clustering,rpc_budget").in("id", list.map((c) => c.entry_observation_id)),
+      db.from("observations").select("id,metrics,counts,sources,paid_promotion,shown,schema_version,checks,holders,extensions,creator,clustering,rugcheck,rpc_budget").in("id", list.map((c) => c.entry_observation_id)),
       db.from("snapshots").select("cohort_id,horizon,due_at,taken_at,status,pair_status,price_usd,liquidity_usd,fdv,reason").in("cohort_id", ids),
       db.from("outcome_notes").select("id,cohort_id,kind,note,created_at").in("cohort_id", ids).order("created_at", { ascending: true }),
       db.from("cohort_actions").select("cohort_id,watched,paper_traded,real_traded").in("cohort_id", ids),

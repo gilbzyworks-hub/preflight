@@ -52,6 +52,14 @@ Data-provider free tiers are small. Each scan has a budget for basic checks and 
 Requests are spaced to stay under ~6/second and retried on rate limits. A watched token costs roughly 5 requests per
 2-minute run.
 
+## External checkers and RugCheck
+Each token has "Open in external checkers" links (RugCheck, Solscan, Bubblemaps), also shown on watchlist and journal
+entries. URL templates live in `src/lib/external-links.ts` with the date they were verified; links are built only from a
+validated mint address, open in a new tab, and Preflight never fetches or embeds those pages. The optional RugCheck summary
+shows one of three explicit outcomes, never "safe": items with RugCheck's own levels, "no risk items" (neutral, never a pass),
+or "data unavailable (reason) as of [time]". Which outcome occurred is stored on the observation. `RUGCHECK_API_BASE`
+(server-only, optional) overrides the API host, used to force failures in testing.
+
 ## Outcome tracking
 Every token the scanner shows is recorded with its check results and the exact rules in force, then re-checked about
 1 hour, 24 hours and 7 days later (the same pool that was recorded). Rows are append-only. See the **Outcomes** page.

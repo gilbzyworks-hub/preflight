@@ -4,6 +4,9 @@ import { supabase } from "@/lib/supabase/client";
 import { failedRequiredIds } from "@shared/engine.ts";
 import type { Evaluation, HolderData, HolderEntry, PoolInfo, TokenScan } from "@shared/types.ts";
 import { fmtHours, fmtPct, fmtPrice, fmtUsd, short } from "@/lib/format";
+import type { RugCheckResult } from "@shared/rugcheck.ts";
+import { ExternalLinks } from "./ExternalLinks";
+import { RugCheckBlock } from "./RugCheckBlock";
 import { loadScans, reEvaluate } from "@/lib/useToken";
 import LogTradeForm from "./LogTradeForm";
 import { useScan, type AlertRow } from "./ScanProvider";
@@ -73,8 +76,8 @@ export default function TokenPanel({ mint, alert }: { mint: string; alert?: Aler
   const [warn, setWarn] = useState<string | null>(null);
   const [watch, setWatch] = useState<WatchRow | null>(null);
   const [logging, setLogging] = useState(false);
-  const [rc, setRc] = useState<{ source: string; risks: { name: string; level: string }[] } | null>(null);
-  const [rcState, setRcState] = useState<"idle" | "loading" | "none">("idle");
+  const [rc, setRc] = useState<RugCheckResult | null>(null);
+  const [rcState, setRcState] = useState<"idle" | "loading">("idle");
   const formRef = useRef<HTMLDivElement>(null);
 
   const refresh = useCallback(async (opts: { withRc?: boolean } = {}) => {
@@ -87,11 +90,11 @@ export default function TokenPanel({ mint, alert }: { mint: string; alert?: Aler
       const s = j.scan as TokenScan;
       if (s.metrics.dataOk) setCached(s);
       else setWarn(`Fresh market data is unavailable${j.errors?.[0] ? ` (${j.errors[0]})` : ""}. Showing the last stored scan, if any.`);
-      if (opts.withRc) {
-        if (j.thirdParty) { setRc(j.thirdParty); setRcState("idle"); } else setRcState("none");
-      }
+      if (opts.withRc) setRc((j.rugcheck as RugCheckResult | null) ?? null);
       bump();
     } catch (e) {
+      // If the whole request failed, say so for RugCheck too instead of leaving it blank or implying "no items".
+      if (opts.withRc) setRc({ status: "unavailable", fetchedAt: new Date().toISOString(), reason: "the request to Preflight failed" });
       setWarn(`Could not refresh: ${e instanceof Error ? e.message : "unknown error"}. Showing the last stored scan, if any.`);
     } finally {
       setLoading(false);
@@ -241,19 +244,13 @@ export default function TokenPanel({ mint, alert }: { mint: string; alert?: Aler
           </div>
           <div className="mt-4 border-t border-line pt-3">
             <h3 className="font-medium">Third-party opinion <span className="label font-normal">optional, not part of the checks</span></h3>
-            {rc ? (
-              <ul className="mt-2 flex flex-col gap-1 text-xs text-muted">
-                <li>Source: {rc.source}. Their opinion, not ours; it can be wrong or incomplete.</li>
-                {rc.risks.length ? rc.risks.map((r) => <li key={r.name}>• {r.name} ({r.level})</li>) : <li>• No items listed.</li>}
-              </ul>
-            ) : (
-              <div className="mt-2 flex items-center gap-3">
-                <button className="btn btn-sm" disabled={rcState === "loading" || loading} onClick={async () => { setRcState("loading"); await refresh({ withRc: true }); }}>
-                  {rcState === "loading" ? "Loading…" : "Show RugCheck summary"}
-                </button>
-                {rcState === "none" && <span className="text-xs text-warn">! Unavailable right now.</span>}
-              </div>
-            )}
+            <div className="mt-2">
+              <div className="label mb-1.5">Open in external checkers</div>
+              <ExternalLinks mint={mint} />
+            </div>
+            <div className="mt-4 border-t border-line pt-3">
+              <RugCheckBlock rc={rc} loading={rcState === "loading" || loading} onAsk={async () => { setRcState("loading"); await refresh({ withRc: true }); setRcState("idle"); }} busy={rcState === "loading"} />
+            </div>
           </div>
         </div>
       )}

@@ -1,4 +1,6 @@
 "use client";
+import { ExternalLinks } from "@/components/ExternalLinks";
+import { EXTERNAL_CAPTION } from "@/lib/external-links";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import TokenPanel from "@/components/TokenPanel";
@@ -112,6 +114,7 @@ export default function Watchlist() {
 
       <section aria-labelledby="watch-h">
         <h2 id="watch-h" className="text-base font-semibold">Watching <span className="label">({items.length})</span></h2>
+        <p className="label mt-1">External checker links: {EXTERNAL_CAPTION}</p>
         {items.length === 0 ? (
           <div className="panel mt-3 p-4 text-sm text-muted">Nothing watched yet. Open a token from the Scanner and choose Watch.</div>
         ) : (
@@ -137,6 +140,7 @@ export default function Watchlist() {
                     <button className="btn btn-sm" aria-expanded={open === it.id} onClick={() => setOpen(open === it.id ? null : it.id)}>Alert rules</button>
                     <button className="btn btn-sm" onClick={async () => { await supabase().from("watchlist").delete().eq("id", it.id); load(); bump(); }}>Remove</button>
                   </div>
+                  <div className="mt-2"><ExternalLinks mint={it.mint} compact /></div>
                   {open === it.id && <RulesEditor item={it} onSaved={load} />}
                 </li>
               );

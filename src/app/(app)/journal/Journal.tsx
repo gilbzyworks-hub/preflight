@@ -1,4 +1,6 @@
 "use client";
+import { ExternalLinks } from "@/components/ExternalLinks";
+import { EXTERNAL_CAPTION } from "@/lib/external-links";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useScan } from "@/components/ScanProvider";
@@ -95,6 +97,7 @@ export default function Journal() {
     <div className="mx-auto max-w-4xl px-4 py-4">
       <h1 className="text-base font-semibold">Journal</h1>
       <p className="mt-1 text-sm text-muted">Paper and real trades are kept separate so rule-following can be compared with impulsive trades. Real trades are records of trades you placed yourself in Fomo.</p>
+      <p className="label mt-1">External checker links: {EXTERNAL_CAPTION}</p>
 
       <div role="tablist" aria-label="Trade type" className="mt-4 grid max-w-sm grid-cols-2 gap-1 rounded-md bg-panel p-1">
         {(["paper", "real"] as const).map((k) => (
@@ -146,6 +149,7 @@ export default function Journal() {
                 <div className="num text-sm">{t.status === "closed" ? <>P&amp;L {usd(Number(t.pnl_usd))}</> : <span className="text-muted">Position open</span>}</div>
               </div>
               <p className="mt-1 text-sm">{t.reason}</p>
+              <div className="mt-1.5"><ExternalLinks mint={t.mint} compact /></div>
               <dl className="num mt-2 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted sm:grid-cols-4">
                 <div>Entry {fmtPrice(Number(t.entry_price))}</div><div>Size ${Number(t.amount_usd).toFixed(2)}</div>
                 <div>Target {fmtPrice(Number(t.target))}</div><div>Stop {fmtPrice(Number(t.stop))}</div>
